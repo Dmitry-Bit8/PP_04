@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package example;
+
+// Определяем сервис
+service Greeter {
+    // RPC метод: принимает запрос, возвращает ответ
+    rpc SayHello (HelloRequest) returns (HelloReply);
+}
+
+// Сообщение запроса
+message HelloRequest {
+    string name = 1;
+}
+
+// Сообщение ответа
+message HelloReply {
+    string message = 1;
+}
