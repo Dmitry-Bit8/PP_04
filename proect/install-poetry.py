@@ -1,33 +1,7 @@
-#!/usr/bin/env python3
-r"""
-This script will install Poetry and its dependencies in an isolated fashion.
-
-It will perform the following steps:
-    * Create a new virtual environment using the built-in venv module, or the virtualenv zipapp if venv is unavailable.
-      This will be created at a platform-specific path (or `$POETRY_HOME` if `$POETRY_HOME` is set:
-        - `~/Library/Application Support/pypoetry` on macOS
-        - `$XDG_DATA_HOME/pypoetry` on Linux/Unix (`$XDG_DATA_HOME` is `~/.local/share` if unset)
-        - `%APPDATA%\pypoetry` on Windows
-    * Update pip inside the virtual environment to avoid bugs in older versions.
-    * Install the latest (or a given) version of Poetry inside this virtual environment using pip.
-    * Install a `poetry` script into a platform-specific path (or `$POETRY_HOME/bin` if `$POETRY_HOME` is set):
-        - `~/.local/bin` on Unix
-        - `%APPDATA%\Python\Scripts` on Windows
-    * Attempt to inform the user if they need to add this bin directory to their `$PATH`, as well as how to do so.
-    * Upon failure, write an error log to `poetry-installer-error-<hash>.log and restore any previous environment.
-
-This script performs minimal magic, and should be relatively stable. However, it is optimized for interactive developer
-use and trivial pipelines. If you are considering using this script in production, you should consider manually-managed
-installs, or use of pipx as alternatives to executing arbitrary, unversioned code from the internet. If you prefer this
-script to alternatives, consider maintaining a local copy as part of your infrastructure.
-
-For full documentation, visit https://python-poetry.org/docs/#installation.
-"""
 
 import sys
 
-# Eager version check so we fail nicely before possible syntax errors
-if sys.version_info < (3, 6):  # noqa: UP036
+if sys.version_info < (3, 6): 
     sys.stdout.write("Poetry installer requires Python 3.6 or newer to run!\n")
     sys.exit(1)
 
@@ -204,8 +178,6 @@ def _get_win_folder_with_ctypes(csidl_name):
     buf = ctypes.create_unicode_buffer(1024)
     ctypes.windll.shell32.SHGetFolderPathW(None, csidl_const, None, 0, buf)
 
-    # Downgrade to short path name if have highbit chars. See
-    # <http://bugs.activestate.com/show_bug.cgi?id=85099>.
     has_high_char = False
     for c in buf:
         if ord(c) > 255:
@@ -221,68 +193,17 @@ def _get_win_folder_with_ctypes(csidl_name):
 
 if WINDOWS:
     try:
-        from ctypes import windll  # noqa: F401
+        from ctypes import windll
 
         _get_win_folder = _get_win_folder_with_ctypes
     except ImportError:
         _get_win_folder = _get_win_folder_from_registry
 
 
-PRE_MESSAGE = """# Welcome to {poetry}!
 
-This will download and install the latest version of {poetry},
-a dependency and package manager for Python.
 
-It will add the `poetry` command to {poetry}'s bin directory, located at:
 
-{poetry_home_bin}
 
-You can uninstall at any time by executing this script with the --uninstall option,
-and these changes will be reverted.
-"""
-
-POST_MESSAGE = """{poetry} ({version}) is installed now. Great!
-
-You can test that everything is set up by executing:
-
-`{test_command}`
-"""
-
-POST_MESSAGE_NOT_IN_PATH = """{poetry} ({version}) is installed now. Great!
-
-To get started you need {poetry}'s bin directory ({poetry_home_bin}) in your `PATH`
-environment variable.
-{configure_message}
-Alternatively, you can call {poetry} explicitly with `{poetry_executable}`.
-
-You can test that everything is set up by executing:
-
-`{test_command}`
-"""
-
-POST_MESSAGE_CONFIGURE_UNIX = """
-Add `export PATH="{poetry_home_bin}:$PATH"` to your shell configuration file.
-"""
-
-POST_MESSAGE_CONFIGURE_FISH = """
-You can execute `set -U fish_user_paths {poetry_home_bin} $fish_user_paths`
-"""
-
-POST_MESSAGE_CONFIGURE_WINDOWS = """
-You can choose and execute one of the following commands in PowerShell:
-
-A. Append the bin directory to your user environment variable `PATH`:
-
-```
-[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";{poetry_home_bin}", "User")
-```
-
-B. Try to append the bin directory to PATH every when you run PowerShell (>=6 recommended):
-
-```
-echo 'if (-not (Get-Command poetry -ErrorAction Ignore)) {{ $env:Path += ";{poetry_home_bin}" }}' | Out-File -Append $PROFILE
-```
-"""
 
 
 class PoetryInstallationError(RuntimeError):
@@ -298,7 +219,7 @@ class VirtualEnvironment:
         self._bin_path = self._path.joinpath(
             "Scripts" if WINDOWS and not MINGW else "bin"
         )
-        # str is for compatibility with subprocess.run on CPython <= 3.7 on Windows
+       
         self._python = str(
             self._path.joinpath(self._bin_path, "python.exe" if WINDOWS else "python")
         )
@@ -320,11 +241,8 @@ class VirtualEnvironment:
             )
 
         try:
-            # on some linux distributions (eg: debian), the distribution provided python
-            # installation might not include ensurepip, causing the venv module to
-            # fail when attempting to create a virtual environment
-            # we import ensurepip but do not use it explicitly here
-            import ensurepip  # noqa: F401
+           
+            import ensurepip  
             import venv
 
             builder = venv.EnvBuilder(clear=True, with_pip=True, symlinks=False)
@@ -339,7 +257,7 @@ class VirtualEnvironment:
 
             builder.create(target)
         except ImportError:
-            # fallback to using virtualenv package if venv is not available, eg: ubuntu
+           
             python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
             virtualenv_bootstrap_url = (
                 f"https://bootstrap.pypa.io/virtualenv/{python_version}/virtualenv.pyz"
@@ -355,13 +273,11 @@ class VirtualEnvironment:
                     sys.executable, virtualenv_pyz, "--clear", "--always-copy", target
                 )
 
-        # We add a special file so that Poetry can detect
-        # its own virtual environment
+      
         target.joinpath("poetry_env").touch()
 
         env = cls(target)
 
-        # this ensures that outdated system default pip does not trigger older bugs
         env.pip("install", "--disable-pip-version-check", "--upgrade", "pip")
 
         return env
